@@ -1,0 +1,38 @@
+{
+    "account": "",
+    "password": "",
+    "hoursperday": "8",
+    "timeclocks": [
+        {
+            "title": "學務處學生獎助學金_住宿服務二組",
+            "hours": "60"
+        }
+    ],
+    "schedule": [
+        {
+            "weekday": "1",
+            "start": "08:00",
+            "end": "18:00"
+        },
+        {
+            "weekday": "2",
+            "start": "08:00",
+            "end": "18:00"
+        },
+        {
+            "weekday": "3",
+            "start": "08:00",
+            "end": "18:00"
+        },
+        {
+            "weekday": "4",
+            "start": "08:00",
+            "end": "18:00"
+        },
+        {
+            "weekday": "5",
+            "start": "08:00",
+            "end": "18:00"
+        }
+    ]
+}
