@@ -168,7 +168,7 @@ def action():
 def main():
     action()
     while True:
-        if datetime.datetime.now() == 0:
+        if datetime.datetime.now().minute % 10 == 0:
             action()
         time.sleep(60)
     action()
