@@ -4,8 +4,12 @@
     "hoursperday": "8",
     "timeclocks": [
         {
-            "title": "copy left title from page",
+            "index": "1",
             "hours": "60"
+        },
+        {
+            "index": "0",
+            "hours": "30"
         }
     ],
     "schedule": [

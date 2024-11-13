@@ -50,55 +50,66 @@ def in_schedule(schedules, weekday, timestamp):
             start = int(start[0]) * 60 + int(start[1])  
             end = schedule['end'].split(":")
             end = int(end[0]) * 60 + int(end[1])
-            if start <= timestamp <= end:
+            if start <= timestamp < end:
                 return True
     return False
 
-        
-    
-def action():
-    # Read config and verify
-    config_path = "config.json"
+def LOG(message):
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]：{message}")
+
+def load_config(config_path):
     config = {}
     try:
         with open(config_path, 'r') as file:
             config = json.load(file)
     except FileNotFoundError:
-        print(f"File not found: {config_path}")
-        exit()
+        LOG(f"File not found: {config_path}")
+        return None
     except json.JSONDecodeError:
-        print(f"Error decoding JSON from file: {config_path}")
-        exit()
+        LOG(f"Error decoding JSON from file: {config_path}")
+        return None
     required_keys = ['account', 'password', 'timeclocks', 'schedule']
     for key in required_keys:
         if key not in config:
-            print(f"Error: Missing required key '{key}' in config.json")
-            exit()
+            LOG(f"Error: Missing required key '{key}' in config.json")
+            return None
+    return config
+    
+def action():
+    config = load_config("config.json")
+    if config == None:
+        return
 
     # Open browser and login
     chrome_options = webdriver.ChromeOptions()
-    # 如果想要看到瀏覽器操作，請註解掉下面三行
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     driver = webdriver.Chrome(options=chrome_options)
-    driver.get('https://portal.nycu.edu.tw/')
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.NAME, 'account')))
+    driver.get('https://portal.nycu.edu.tw/#/redirect/timeclocksign')
+    try:
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.NAME, 'account')))
+    except:
+        LOG("Timeout: Cannot find login page")
+        driver.quit()
+        return 
     driver.find_element(By.NAME, 'account').send_keys(config['account'])
     driver.find_element(By.NAME, 'password').send_keys(config['password'])
     driver.find_element(By.CLASS_NAME, 'login').click()
-    try:    
-        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CLASS_NAME, 'user-name')))
-    except:
-        print("登入失敗，請檢查帳號密碼是否正確")
+    try:
+        el_message = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.CLASS_NAME, "el-message__content")))
+        LOG(f"登入失敗，錯誤訊息：{el_message.text}")
         driver.quit()
-        exit()
+        return
+    except:
+        try:    
+            WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '受僱者線上簽到退')]")))
+        except:
+            LOG("Timeout: 無法進入簽到頁面")
+            driver.quit()
+            return 
 
-    # Redirect to timeclocksign page
-    driver.get('https://portal.nycu.edu.tw/#/redirect/timeclocksign')
-    buttons = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, '#ContentPlaceHolder1_GridView_attend')))
-
-    # Parse timeclocks
+    # Parse timeclocks from the table of the page
     trs = driver.find_element(By.XPATH, '/html/body/form/div[3]/div/div/table/tbody/tr/td/table/tbody/tr[2]/td/div/table').find_elements(By.TAG_NAME, 'tr')
     timeclocks = []
     clocking = None
@@ -110,58 +121,70 @@ def action():
             clocking = timeclocks[-1]
         # print(timeclocks[-1].to_string())
 
-    # Get time
+    # check if this time is in schedulable time
     now = datetime.datetime.now()
     weekday = now.isoweekday()
     timestamp = now.hour * 60 + now.minute
-
-    # check if this time is in schedulable time
     is_schedulable = in_schedule(config['schedule'], weekday, timestamp)
     
-    # Determine next action
-    print(f"[LOG] 當前時間 {now.strftime('%Y-%m-%d %H:%M:%S')}")
-    # If the system have signed in
+    # Take action based on prepared infomation
     if clocking != None:    
         # check if the time is reached the hoursperday limit
         is_reached = (timestamp - clocking.last_sign >= 60 * int(config['hoursperday']))
-        # signed out
+
         if is_schedulable == False or is_reached == True:
             if is_schedulable == False:
-                print(f"[簽退]:{clocking.title} 超出 schedule 時間範圍")
+                LOG(f"簽退「{clocking.title}」(當前時間不在設定簽到時段)")
             elif is_reached:
-                print(f"[簽退]:{clocking.title} 已經簽滿本日時數")
+                LOG(f"簽退「{clocking.title}」(已經簽滿本日時數{config['hoursperday']}小時)")
             clocking.tr.find_element(By.CLASS_NAME, 'input-button').click()
-            confirm = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, '/html/body/form/div[3]/div/div/table/tbody/tr[2]/td/input[1]')))
-            confirm.click()
+            try:
+                confirm = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, '/html/body/form/div[3]/div/div/table/tbody/tr[2]/td/input[1]')))
+                confirm.click()
+            except:
+                LOG("簽退失敗")
         else:
-            print(f"[LOG] {clocking.title} 正在簽到中，最後簽到時間 {clocking.last_sign // 60} 點 {clocking.last_sign % 60} 分")
+            LOG(f"正在簽到「{clocking.title}」中，本日簽到時間：{clocking.last_sign // 60}:{clocking.last_sign % 60}")
     else:
         # 判斷當前是否已經達到本日時數
         today_total_hours = 0
         for clock in timeclocks:
             today_total_hours += clock.today_hours
-
         is_reached = today_total_hours >= int(config['hoursperday'])
         
         # 依據 config timeclock 順序選擇一個簽到
         if is_schedulable and is_reached == False:
             priority = list()
-            for target in config['timeclocks']:
-                for clock in timeclocks:
-                    if clock.title == target['title']:
-                        priority.append(clock)
-                        break
+            # 排序 priority
+            for item in config['timeclocks']:
+                index = int(item['index'])
+                if index >= len(timeclocks):
+                    LOG("config.json 中的 timeclock index 超出範圍")
+                    continue
+                clock = timeclocks[index]
+                if clock.accumulate < int(item['hours']):
+                    priority.append(clock)
+                    break
             is_signed = False
+            # 依據 priority 順序簽到
             for clock in priority:
                 if clock.remain > 0:
-                    print(f"[簽到]:{clock.title}")
+                    LOG(f"簽到「{clock.title}」")
                     clock.tr.find_element(By.CLASS_NAME, 'input-button').click()
-                    confirm = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, '/html/body/form/div[3]/div/div/table/tbody/tr[2]/td/input[1]')))
-                    confirm.click()
+                    try:
+                        confirm = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, '/html/body/form/div[3]/div/div/table/tbody/tr[2]/td/input[1]')))
+                        confirm.click()
+                    except:
+                        LOG("簽到失敗")
                     is_signed = True
                     break
             if is_signed == False:
-                print("[LOG] 無可用簽到")
+                LOG("無可用簽到")
+        else:
+            if is_schedulable == False:
+                LOG("當前時間不在設定簽到時段")
+            if is_reached:
+                LOG(f"已經簽滿本日時數 {config['hoursperday']} 小時")
     driver.quit()
 
 
@@ -171,7 +194,6 @@ def main():
         if datetime.datetime.now().minute % 10 == 0:
             action()
         time.sleep(60)
-    action()
 
 if __name__ == "__main__":
     main()
