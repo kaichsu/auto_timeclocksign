@@ -97,8 +97,10 @@ def action():
     driver.find_element(By.NAME, 'password').send_keys(config['password'])
     driver.find_element(By.CLASS_NAME, 'login').click()
 
+    table_xpath = '/html/body/form/div[3]/div/div/table/tbody/tr/td/table/tbody/tr[2]/td/div/table'
+    trs = None
     try:    
-        WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '受僱者線上簽到退')]")))
+        trs = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.XPATH, table_xpath))).find_elements(By.TAG_NAME, 'tr')
     except:
         try:
             el_message = driver.find_element(By.CLASS_NAME, "el-message__content")
@@ -110,7 +112,6 @@ def action():
         return
 
     # Parse timeclocks from the table of the page
-    trs = driver.find_element(By.XPATH, '/html/body/form/div[3]/div/div/table/tbody/tr/td/table/tbody/tr[2]/td/div/table').find_elements(By.TAG_NAME, 'tr')
     timeclocks = []
     clocking = None
     for tr in trs:
@@ -190,6 +191,7 @@ def action():
 
 def main():
     action()
+    time.sleep(60 - datetime.datetime.now().second)
     while True:
         if datetime.datetime.now().minute % 10 == 0:
             action()
