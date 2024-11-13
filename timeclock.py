@@ -82,9 +82,9 @@ def action():
 
     # Open browser and login
     chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
+    # chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--disable-gpu")
+    # chrome_options.add_argument("--no-sandbox")
     driver = webdriver.Chrome(options=chrome_options)
     driver.get('https://portal.nycu.edu.tw/#/redirect/timeclocksign')
     try:
@@ -96,18 +96,18 @@ def action():
     driver.find_element(By.NAME, 'account').send_keys(config['account'])
     driver.find_element(By.NAME, 'password').send_keys(config['password'])
     driver.find_element(By.CLASS_NAME, 'login').click()
-    try:
-        el_message = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.CLASS_NAME, "el-message__content")))
-        LOG(f"登入失敗，錯誤訊息：{el_message.text}")
+
+    try:    
+        WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '受僱者線上簽到退')]")))
+    except:
+        try:
+            el_message = driver.find_element(By.CLASS_NAME, "el-message__content")
+            LOG(f"錯誤訊息：{el_message.text}")
+        except:
+            pass
+        LOG("登入失敗，請確認 config.json 中的 account, password ")
         driver.quit()
         return
-    except:
-        try:    
-            WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '受僱者線上簽到退')]")))
-        except:
-            LOG("Timeout: 無法進入簽到頁面")
-            driver.quit()
-            return 
 
     # Parse timeclocks from the table of the page
     trs = driver.find_element(By.XPATH, '/html/body/form/div[3]/div/div/table/tbody/tr/td/table/tbody/tr[2]/td/div/table').find_elements(By.TAG_NAME, 'tr')
