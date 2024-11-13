@@ -82,9 +82,9 @@ def action():
 
     # Open browser and login
     chrome_options = webdriver.ChromeOptions()
-    # chrome_options.add_argument("--headless")
-    # chrome_options.add_argument("--disable-gpu")
-    # chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
     driver = webdriver.Chrome(options=chrome_options)
     driver.get('https://portal.nycu.edu.tw/#/redirect/timeclocksign')
     try:
