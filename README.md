@@ -10,6 +10,8 @@
 1. 設定 `config.json` 檔案
 2. 在本工作目錄執行 `python3 timeclock.py` or `python timeclock.py`
 
+或是使用 `run.sh` 在背景執行，可關掉終端機，並使用 `ps aux | grep timeclock` 以及 `cat timeclock.log` 確認狀態
+
 ## `config.json` 設定說明
 - `account`, `password` 輸入登入的帳號
 - `hoursperday` 設定每天能簽到的時數上線

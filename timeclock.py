@@ -182,20 +182,20 @@ def action():
             if is_signed == False:
                 LOG("無可用簽到")
         else:
+            message = ""
             if is_schedulable == False:
-                LOG("當前時間不在設定簽到時段")
+                message += "不在設定簽到時段"
             if is_reached:
-                LOG(f"已經簽滿本日時數 {config['hoursperday']} 小時")
+                message += f"已經簽滿本日 {config['hoursperday']} 小時"
+            LOG(f"{message}")
     driver.quit()
 
 
 def main():
-    action()
-    time.sleep(60 - datetime.datetime.now().second)
+    LOG("開始執行")
     while True:
-        if datetime.datetime.now().minute % 10 == 0:
-            action()
-        time.sleep(60)
+        action()
+        time.sleep(1200)
 
 if __name__ == "__main__":
     main()
